@@ -36,7 +36,7 @@ function makeRequest(address) {
                 
                 let error = result.error;
                 if (error !== undefined) {
-                    console.log("error is " + error);
+                    console.log(`error is ${error}`);
 
                     if (error === "timeout") {
                         return resolve(retrieveGeo(address, RETRY_DELAY_MILLIS, true));
@@ -44,17 +44,17 @@ function makeRequest(address) {
                         return reject(error);
                     }
                 } else {
-                    console.log("req result is " + result.results);
+                    console.log(`req result is ${result.results}`);
 
                     return resolve(result.results);
                 }
             } else {
-                return reject(`error status {this.status}, {this.statusText}`);
+                return reject(`error status ${this.status}, ${this.statusText}`);
             }
         };
 
         xhr.onerror = function() {
-            return reject(`error status {this.status}, {this.statusText}`);
+            return reject(`error status ${this.status}, ${this.statusText}`);
         };
 
 
@@ -78,16 +78,16 @@ function retrieveGeo(address, delayMillis, force) {
         state.lastRequest = address;
     }
 
-    return delay(address, delayMillis).then(makeRequest.bind(this));
+    return delay(address, delayMillis).then(address => makeRequest(address));
 }
 
 let ResultsList = React.createClass({
     render: function() {
         let results = this.props.results || [];
         return (<ul>
-                {results.map(function(item) {
-                    return <li>{ item.address + ": " + item.lat + "/" + item.lng }</li>;
-                })}
+                {
+                    results.map(item => <li>{ item.address + ": " + item.lat + "/" + item.lng }</li>)
+                }
                 </ul>);
     }
 });
@@ -104,25 +104,25 @@ let GeoInput = React.createClass({
         this.setState({value: event.target.value,
                        loading: true});
         retrieveGeo(event.target.value, INPUT_DELAY_MILLIS).then(
-            function(result) {
+            result =>  {
                 if (!result) {
                     result = [];
                 }
-                this.setState({lastStatus: 'success, addresses found: ' + result.length,
+                this.setState({lastStatus: `success, addresses found: ${result.length}`,
                                results: result,
                                loading: false});
-                console.log("result length is " + (result && result.length));
+                console.log(`result length is ${result.length}`);
                 
-            }.bind(this),
-            function(reason) {
+            },
+            reason => {
                 this.setState({lastStatus: 'error: ' + reason, 
                                loading: false});
                 console.log("reason:::" + reason);
-            }.bind(this)
-        ).catch(function(reason) {
+            }
+        ).catch(reason => {
             this.setState({lastStatus: 'error: ' + reason,
                            loading: false});
-        }.bind(this));
+        });
     },
     render: function() {
         return (
