@@ -64,6 +64,8 @@ body {
 }
 
 input[type=text] {
+    width: 600px;
+    display: block;
     background: #ffffff;
     border: 5px solid #e2e2e2; 
     -webkit-box-shadow: 
@@ -77,5 +79,5 @@ input[type=text] {
             0 0 16px rgba(0,0,0,0.1); 
     padding: 15px;
     font-size: 14px;
-    margin: 0 0 10px 0;
+    margin: 0 auto;
 }
