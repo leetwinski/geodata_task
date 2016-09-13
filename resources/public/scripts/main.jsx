@@ -106,14 +106,6 @@ let ResultsList = React.createClass({
             </div>
     )}
 });
-
-let Spinner = React.createClass({
-    render: function() {
-        return (<span className="cssload-loader">
-                    <span className="cssload-loader-inner"></span>
-                </span>);
-    }
-});
               
 let GeoInput = React.createClass({
     getInitialState: function() { 
@@ -151,12 +143,12 @@ let GeoInput = React.createClass({
         return (
             <div className="wrapper">
               <input type="text"
+                     className={this.state.loading ? "loading" : ""}
                      placeholder="enter address"
                      value={this.state.value}
                      onChange={this.handleChange}
                      />
               <ResultsList results={this.state.results}/>
-              { this.state.loading ? <Spinner/> : null }
             </div>
         );
     }

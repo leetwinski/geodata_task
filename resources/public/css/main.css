@@ -15,8 +15,12 @@ body {
   max-width: 800px;
 }
 
-.hidden {
-    display: none;
+.loading {    
+    background-color: #ffffff;
+    background-image: url("http://loadinggif.com/images/image-selection/3.gif");
+    background-size: 25px 25px;
+    background-position:right center;
+    background-repeat: no-repeat;
 }
 
 .table {
@@ -70,7 +74,6 @@ body {
 input[type=text] {
     width: 600px;
     display: block;
-    background: #ffffff;
     border: 5px solid #e2e2e2; 
     -webkit-box-shadow: 
       inset 0 0 8px  rgba(0,0,0,0.1),
