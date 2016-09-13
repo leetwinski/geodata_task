@@ -84,6 +84,10 @@ function retrieveGeo(address, delayMillis, force) {
 let ResultsList = React.createClass({
     render: function() {
         let results = this.props.results || [];
+        if (results.length === 0) {
+            return null;
+        }
+
         return (
             <div className="table">
               <div className="row header">

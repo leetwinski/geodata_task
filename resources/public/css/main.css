@@ -15,6 +15,10 @@ body {
   max-width: 800px;
 }
 
+.hidden {
+    display: none;
+}
+
 .table {
   margin: 0 0 40px 0;
   width: 100%;
