@@ -107,7 +107,13 @@ let ResultsList = React.createClass({
     )}
 });
 
-              
+let Spinner = React.createClass({
+    render: function() {
+        return (<span className="cssload-loader">
+                    <span className="cssload-loader-inner"></span>
+                </span>);
+    }
+});
               
 let GeoInput = React.createClass({
     getInitialState: function() { 
@@ -149,10 +155,8 @@ let GeoInput = React.createClass({
                      value={this.state.value}
                      onChange={this.handleChange}
                      />
-              { this.state.loading ? <div>loading...</div> : null }
-              <br/>
-              <div>last status: {this.state.lastStatus}</div>
               <ResultsList results={this.state.results}/>
+              { this.state.loading ? <Spinner/> : null }
             </div>
         );
     }
