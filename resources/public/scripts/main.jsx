@@ -81,11 +81,27 @@ function retrieveGeo(address, delayMillis, force) {
     return delay(address, delayMillis).then(address => makeRequest(address));
 }
 
+function isBlank(s) {
+    if (!s) {
+        return true;
+    }
+
+    return s.trim().length === 0; 
+}
+
 let ResultsList = React.createClass({
     render: function() {
+        console.log(this.props.emptySearch);
+        
+        if (this.props.emptySearch) {
+            return null;
+        }
+        
         let results = this.props.results || [];
         if (results.length === 0) {
-            return null;
+            return <div className="empty-result">
+                Unfortunately nothing was found.
+            </div>;
         }
 
         return (
@@ -148,7 +164,8 @@ let GeoInput = React.createClass({
                      value={this.state.value}
                      onChange={this.handleChange}
                      />
-              <ResultsList results={this.state.results}/>
+              <ResultsList results={this.state.results}
+                           emptySearch={isBlank(this.state.value)}/>
             </div>
         );
     }
