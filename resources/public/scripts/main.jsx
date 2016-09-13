@@ -84,17 +84,30 @@ function retrieveGeo(address, delayMillis, force) {
 let ResultsList = React.createClass({
     render: function() {
         let results = this.props.results || [];
-        return (<ul>
-                {
-                    results.map(item => <li>{ item.address + ": " + item.lat + "/" + item.lng }</li>)
-                }
-                </ul>);
-    }
+        return (
+            <div className="table">
+              <div className="row header">
+                <div className="cell">Address</div>
+                <div className="cell">Latitude</div>
+                <div className="cell">Longitude</div>
+              </div>
+              {
+              results.map(function(item) {
+                  return <div className="row">
+                      <div className="cell">{item.address}</div>
+                          <div className="cell">{item.lat}</div>
+                              <div className="cell">{item.lng}</div>
+                      </div>;})
+              }
+            </div>
+    )}
 });
 
+              
+              
 let GeoInput = React.createClass({
     getInitialState: function() { 
-        return { value: 'enter address',
+        return { value: '',
                  lastStatus: '',
                  results: [],
                  loading: false }; 
@@ -126,8 +139,9 @@ let GeoInput = React.createClass({
     },
     render: function() {
         return (
-            <div>
+            <div className="wrapper">
               <input type="text"
+                     placeholder="enter address"
                      value={this.state.value}
                      onChange={this.handleChange}
                      />
