@@ -3,8 +3,7 @@
             [clojure.string :as cs]
             [clj-http.client :as http]
             [clojure.data.json :as json]
-            [clojure.core.async :refer [>! <! <!! chan alts!
-                                        go go-loop timeout]]))
+            [clojure.core.async :refer [>! <! chan go go-loop]]))
 
 (def ^:private +service-url+
   "http://geo.truckerpathteam.com/maps/api/geocode/json")

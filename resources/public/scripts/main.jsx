@@ -1,19 +1,24 @@
 const INPUT_DELAY_MILLIS = 300;
 const RETRY_DELAY_MILLIS = 1000;
 
-let lastRequest;
+const state = { lastRequest: "",
+                lastStatus: "" };
 
-function delayAndRequestAddress(address, delay) {
+let timeoutId = 0;
+
+function delay(address, delayMillis) {
+    clearTimeout(timeoutId);
+
     return new Promise(function(resolve, reject) {
-        setTimeout(function() {
-            console.log(address + " " + lastRequest);
+        timeoutId = setTimeout(function() {
+            console.log(address + " " + state.lastRequest);
             
-            if (address === lastRequest) {
+            if (address === state.lastRequest) {
                 resolve(address);
             } else {
                 reject("address to be requested has been changed");
             }
-        }, delay);
+        }, delayMillis);
     });
 }
 
@@ -34,12 +39,13 @@ function makeRequest(address) {
                     console.log("error is " + error);
 
                     if (error === "timeout") {
-                        return delayAndRequestAddress(address, RETRY_DELAY_MILLIS);
+                        return resolve(retrieveGeo(address, RETRY_DELAY_MILLIS, true));
                     } else {
                         return reject(error);
                     }
                 } else {
-                    console.log("result is " + result.results);
+                    console.log("req result is " + result.results);
+
                     return resolve(result.results);
                 }
             } else {
@@ -56,21 +62,23 @@ function makeRequest(address) {
     });
 }
 
-function retrieveGeo(address, delay) {
-    lastRequest = address.trim();
+function retrieveGeo(address, delayMillis, force) {
+    address = address.trim();
 
-    if (lastRequest.length === 0) {
-        return Promise.reject("address string is blank");
+    if (!force) {
+        if (state.lastRequest === address) {
+            console.log("rejecting due to the same address");
+            return Promise.reject("address wasn't changed");
+        }
+
+        if (address.length === 0) {
+            return Promise.reject("address string is blank");
+        }
+
+        state.lastRequest = address;
     }
 
-    return delayAndRequestAddress(lastRequest, delay).then(
-        function(address) {
-            return makeRequest(address);
-        }, 
-        function(reason) {
-            return Promise.reject(reason);
-        }
-    );
+    return delay(address, delayMillis).then(makeRequest.bind(this));
 }
 
 let ResultsList = React.createClass({
@@ -85,27 +93,36 @@ let ResultsList = React.createClass({
 });
 
 let GeoInput = React.createClass({
-    getInitialState: function() { return { value: 'enter address',
-                                           lastStatus: '',
-                                           results: []}; },
+    getInitialState: function() { 
+        return { value: 'enter address',
+                 lastStatus: '',
+                 results: [],
+                 loading: false }; 
+    },
     handleChange: function(event) {
         console.log(event.target.value);
-        this.setState({value: event.target.value, results: []});
+        this.setState({value: event.target.value,
+                       loading: true});
         retrieveGeo(event.target.value, INPUT_DELAY_MILLIS).then(
             function(result) {
                 if (!result) {
                     result = [];
                 }
                 this.setState({lastStatus: 'success, addresses found: ' + result.length,
-                               results: result});
-                console.log("result is " + result);
+                               results: result,
+                               loading: false});
+                console.log("result length is " + (result && result.length));
                 
             }.bind(this),
             function(reason) {
-                this.setState({lastStatus: 'error: ' + reason});
+                this.setState({lastStatus: 'error: ' + reason, 
+                               loading: false});
                 console.log("reason:::" + reason);
             }.bind(this)
-        );
+        ).catch(function(reason) {
+            this.setState({lastStatus: 'error: ' + reason,
+                           loading: false});
+        }.bind(this));
     },
     render: function() {
         return (
@@ -114,6 +131,7 @@ let GeoInput = React.createClass({
                      value={this.state.value}
                      onChange={this.handleChange}
                      />
+              { this.state.loading ? <div>loading...</div> : null }
               <br/>
               <div>last status: {this.state.lastStatus}</div>
               <ResultsList results={this.state.results}/>
