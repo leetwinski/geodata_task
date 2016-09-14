@@ -14,9 +14,9 @@ function delay(address, delayMillis) {
             console.log(address + " " + state.lastRequest);
             
             if (address === state.lastRequest) {
-                resolve(address);
+                return resolve(address);
             } else {
-                reject("address to be requested has been changed");
+                return reject("address to be requested has been changed");
             }
         }, delayMillis);
     });
@@ -74,9 +74,9 @@ function retrieveGeo(address, delayMillis, force) {
         if (address.length === 0) {
             return Promise.reject("address string is blank");
         }
-
-        state.lastRequest = address;
     }
+
+    state.lastRequest = address;
 
     return delay(address, delayMillis).then(address => makeRequest(address));
 }
@@ -120,7 +120,7 @@ let ResultsList = React.createClass({
                       </div>;})
               }
             </div>
-    )}
+        )}
 });
               
 let GeoInput = React.createClass({
@@ -146,12 +146,14 @@ let GeoInput = React.createClass({
                 
             },
             reason => {
-                this.setState({lastStatus: 'error: ' + reason, 
+                this.setState({lastStatus: 'error: ' + reason,
+                               results: [],
                                loading: false});
                 console.log("reason:::" + reason);
             }
         ).catch(reason => {
             this.setState({lastStatus: 'error: ' + reason,
+                           results: [],
                            loading: false});
         });
     },
