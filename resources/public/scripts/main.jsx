@@ -12,12 +12,8 @@ function delay(address, delayMillis) {
     return new Promise(function(resolve, reject) {
         timeoutId = setTimeout(function() {
             console.log(address + " " + state.lastRequest);
-            
-            if (address === state.lastRequest) {
-                return resolve(address);
-            } else {
-                return reject("address to be requested has been changed");
-            }
+
+            return resolve(address);
         }, delayMillis);
     });
 }
