@@ -1,10 +1,11 @@
 (ns geoclient.cache-repo
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as cs]))
+            [clojure.string :as cs]
+            [environ.core :refer [env]]))
 
 (def ^{:private true :dynamic true}
   *db-spec* {:subprotocol "hsqldb"
-             :subname "mem:geo_cache_db"})
+             :subname (env :database-url)})
 
 (def ^:private +create-table-stmt+
   (str "CREATE TABLE IF NOT EXISTS geo_data ("
@@ -34,9 +35,12 @@
   (jdbc/query *db-spec*
               ["select * from geo_data;"]))
 
-(defn add-item [query-address address lat lng]
-  (jdbc/insert! *db-spec* :geo_data
-                {:query_address query-address
-                 :address address
-                 :lat lat
-                 :lng lng}))
+(defn add-item [query-address address lat lng & {t :timestamp}]
+  (let [item-data {:query_address query-address
+                   :address address
+                   :lat lat
+                   :lng lng}]
+    (jdbc/insert! *db-spec* :geo_data
+                  (if t
+                    (assoc item-data :date_added t)
+                    item-data))))
