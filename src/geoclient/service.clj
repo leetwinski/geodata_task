@@ -36,7 +36,7 @@
                                             {:query-params {"address" address}})
                                            address)})
               *request-timeout-millis* {:error :timeout})
-       (catch Throwable e (println e) {:error :server-error})))
+       (catch Throwable e {:error :server-error})))
 
 (defn lookup-geo [address]
   (if (and address (not (cs/blank? address)))
