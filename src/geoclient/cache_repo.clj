@@ -27,9 +27,10 @@
                address]))
 
 (defn remove-outdated []
-  (jdbc/query *db-spec*
-              [(str "DELETE FROM geo_data "
-                    "WHERE date_added < CURRENT_TIMESTAMP - 1 DAY;")]))
+  (jdbc/db-do-commands
+   *db-spec*
+   [(str "DELETE FROM geo_data "
+         "WHERE date_added < CURRENT_TIMESTAMP - 1 DAY;")]))
 
 (defn select-all []
   (jdbc/query *db-spec*
