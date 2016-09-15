@@ -1,3 +1,6 @@
+import React from 'react';
+import {render}  from 'react-dom';
+
 const INPUT_DELAY_MILLIS = 300;
 const RETRY_DELAY_MILLIS = 1000;
 
@@ -43,6 +46,8 @@ function makeRequest(address) {
                     console.log(`req result is ${result.results}`);
 
                     return resolve(result.results);
+
+
                 }
             } else {
                 return reject(`error status ${this.status}, ${this.statusText}`);
@@ -169,7 +174,7 @@ let GeoInput = React.createClass({
     }
 });
 
-ReactDOM.render(
+render(
     <GeoInput/>,
     document.getElementById('content')
 );
