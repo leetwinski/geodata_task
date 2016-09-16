@@ -1,9 +1,117 @@
 import React from 'react';
 import {render}  from 'react-dom';
-
+import 'babel-polyfill';
+import {combineReducers, createStore, applyMiddleware} from 'redux';
+import 'isomorphic-fetch';
+import Rx from 'rxjs/Rx';
+import thunkMiddleware from 'redux-thunk';
+import createLogger from 'redux-logger';
 
 const INPUT_DELAY_MILLIS = 300;
 const RETRY_DELAY_MILLIS = 1000;
+
+const MAX_RETRIES = 5;
+
+const REQUEST_GEODATA = 'REQUEST_GEODATA';
+const REQUEST_STARTED = 'REQUEST_STARTED';
+const REQUEST_COMPLETE = 'REQUEST_COMPLETE';
+const REQUEST_ERROR = 'REQUEST_ERROR';
+
+class RequestService {
+    constructor(urlFn) { 
+        if (urlFn === undefined) {
+            this.urlFn = params => url;
+        } else {
+            this.urlFn = urlFn;
+        }
+
+        this.subscription = null;
+    }
+
+    request(dispatch, ...params) {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = null;
+        }
+
+        dispatch(requestStarted(params[0]));
+
+        this.subscription = Rx.Observable.defer(
+            () => Rx.Observable.fromPromise(
+                fetch(this.urlFn(...params))
+                    .then(resp => resp.json())
+                    .then(
+                        ({results, error}) => {
+                            console.log(`res: ${results}, err: ${error}`);
+                            
+                            if (error) {
+                                return Promise.reject(error);
+                            }
+
+                            return results || [];
+                        }
+                    )
+            )
+        ).retry(MAX_RETRIES).subscribe(
+            results => dispatch(requestComplete(results)),
+            err => dispatch(requestError(err))
+        );
+    }
+}                       
+
+let requestService = new RequestService(
+    address => `/geocode?address=${encodeURIComponent(address)}`);
+
+function uiRequestGeodata(address) {
+    return {
+        type: REQUEST_GEODATA,
+        address
+    };
+}
+
+function requestStarted(address) {
+    return {
+        type: REQUEST_STARTED,
+        address
+    };
+}
+
+function requestError(errorCode) {
+    return {
+        type: REQUEST_ERROR,
+        errorCode
+    };
+}
+
+function requestComplete(results) {
+    return {
+        type: REQUEST_COMPLETE,
+        results
+    };
+}
+
+function requestDataReducer(reqData, newData) {
+    if (reqData === undefined) {
+        return {results: []};
+    }
+
+    return Object.assign(reqData, newData);
+}
+
+function fetchGeodata(address) {
+    return dispatch => {
+        requestService.request(dispatch, address);
+    };
+}
+
+const geodataApp = combineReducers({
+    requestDataReducer
+});
+
+const appStore = createStore(geodataApp, applyMiddleware(
+    thunkMiddleware, createLogger()));
+
+//appStore.dispatch(fetchGeodata('xxx'));
 
 const state = { lastRequest: "",
                 lastStatus: "" };
