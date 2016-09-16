@@ -1,4 +1,5 @@
 import React from 'react';
+import {connect, Provider} from 'react-redux';
 import {render}  from 'react-dom';
 import 'babel-polyfill';
 import {combineReducers, createStore, applyMiddleware} from 'redux';
@@ -12,7 +13,7 @@ const RETRY_DELAY_MILLIS = 1000;
 
 const MAX_RETRIES = 5;
 
-const REQUEST_GEODATA = 'REQUEST_GEODATA';
+const UI_REQUEST_GEODATA = 'REQUEST_GEODATA';
 const REQUEST_STARTED = 'REQUEST_STARTED';
 const REQUEST_COMPLETE = 'REQUEST_COMPLETE';
 const REQUEST_ERROR = 'REQUEST_ERROR';
@@ -28,22 +29,29 @@ class RequestService {
         this.subscription = null;
     }
 
-    request(dispatch, ...params) {
+    cancel() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;
         }
+    }
 
-        dispatch(requestStarted(params[0]));
+    request(dispatch, address) {        
+        this.cancel();
+        
+        dispatch(requestStarted(address));
+
+        if (isBlank(address)) {
+            dispatch(requestComplete([]));
+            return;
+        }
 
         this.subscription = Rx.Observable.defer(
             () => Rx.Observable.fromPromise(
-                fetch(this.urlFn(...params))
+                fetch(this.urlFn(address))
                     .then(resp => resp.json())
                     .then(
                         ({results, error}) => {
-                            console.log(`res: ${results}, err: ${error}`);
-                            
                             if (error) {
                                 return Promise.reject(error);
                             }
@@ -62,9 +70,9 @@ class RequestService {
 let requestService = new RequestService(
     address => `/geocode?address=${encodeURIComponent(address)}`);
 
-function uiRequestGeodata(address) {
+function ui_requestGeodata(address) {
     return {
-        type: REQUEST_GEODATA,
+        type: UI_REQUEST_GEODATA,
         address
     };
 }
@@ -90,12 +98,27 @@ function requestComplete(results) {
     };
 }
 
-function requestDataReducer(reqData, newData) {
+function requestDataReducer(reqData, action) {
     if (reqData === undefined) {
-        return {results: []};
+        return {results: [],
+                error: null,
+                isLoading: false};
     }
 
-    return Object.assign(reqData, newData);
+    switch (action.type) {
+    case REQUEST_STARTED:
+        return Object.assign({}, reqData, {isLoading: true});
+    case REQUEST_COMPLETE:
+        return Object.assign({}, reqData, {results: action.results,
+                                           error: null,
+                                           isLoading:false});
+    case REQUEST_ERROR:
+        return Object.assign({}, reqData, {results: [],
+                                           error: action.error,
+                                           isLoading: false});
+    }
+
+    return reqData;
 }
 
 function fetchGeodata(address) {
@@ -105,91 +128,11 @@ function fetchGeodata(address) {
 }
 
 const geodataApp = combineReducers({
-    requestDataReducer
+    geoData: requestDataReducer
 });
 
 const appStore = createStore(geodataApp, applyMiddleware(
     thunkMiddleware, createLogger()));
-
-//appStore.dispatch(fetchGeodata('xxx'));
-
-const state = { lastRequest: "",
-                lastStatus: "" };
-
-let timeoutId = 0;
-
-function delay(address, delayMillis) {
-    clearTimeout(timeoutId);
-
-    return new Promise(function(resolve, reject) {
-        timeoutId = setTimeout(function() {
-            console.log(address + " " + state.lastRequest);
-
-            return resolve(address);
-        }, delayMillis);
-    });
-}
-
-function makeRequest(address) {
-    return new Promise(function(resolve, reject) {
-        console.log("requesting " + address);
-        
-        let xhr = new XMLHttpRequest();
-        xhr.open("GET", `/geocode?address=` + encodeURIComponent(address));
-
-        xhr.onload = function() {
-            if (this.status >= 200 && this.status < 300) {
-
-                let result = JSON.parse(xhr.response);
-                
-                let error = result.error;
-                if (error !== undefined) {
-                    console.log(`error is ${error}`);
-
-                    if (error === "timeout") {
-                        return resolve(retrieveGeo(address, RETRY_DELAY_MILLIS, true));
-                    } else {
-                        return reject(error);
-                    }
-                } else {
-                    console.log(`req result is ${result.results}`);
-
-                    return resolve(result.results);
-
-
-                }
-            } else {
-                return reject(`error status ${this.status}, ${this.statusText}`);
-            }
-        };
-
-        xhr.onerror = function() {
-            return reject(`error status ${this.status}, ${this.statusText}`);
-        };
-
-
-        xhr.send();
-    });
-}
-
-function retrieveGeo(address, delayMillis, force) {
-    address = address.trim();
-
-    if (!force) {
-        if (state.lastRequest === address) {
-            console.log("rejecting due to the same address");
-            return Promise.reject("address wasn't changed");
-        }
-
-        if (address.length === 0) {
-            return Promise.reject("address string is blank");
-        }
-    }
-
-    state.lastRequest = address;
-
-    return delay(address, delayMillis).then(address => makeRequest(address));
-}
 
 function isBlank(s) {
     if (!s) {
@@ -201,9 +144,7 @@ function isBlank(s) {
 
 class ResultsList extends React.Component {
     render() {
-        console.log(this.props.emptySearch);
-        
-        if (this.props.emptySearch) {
+        if (this.props.hideResults) {
             return null;
         }
         
@@ -242,57 +183,52 @@ class ResultsList extends React.Component {
 class GeoInput extends React.Component {
     constructor() {
         super();
-        this.state = { value: '',
-                       lastStatus: '',
-                       results: [],
-                       loading: false };
-    }
- 
-    handleChange(event) {
-        console.log(event.target.value);
-        this.setState({value: event.target.value,
-                  loading: true});
-        retrieveGeo(event.target.value, INPUT_DELAY_MILLIS).then(
-            result =>  {
-                if (!result) {
-                    result = [];
-                }
-                this.setState({lastStatus: `success, addresses found: ${result.length}`,
-                               results: result,
-                               loading: false});
-                console.log(`result length is ${result.length}`);
-                
-            },
-            reason => {
-                this.setState({lastStatus: 'error: ' + reason,
-                               results: [],
-                               loading: false});
-                console.log("reason:::" + reason);
-            }
-        ).catch(reason => {
-            this.setState({lastStatus: 'error: ' + reason,
-                           results: [],
-                           loading: false});
-        });
+        this.state = {value: ""};
     }
 
     render() {
         return (
             <div className="wrapper">
               <input type="text"
-                     className={state.loading ? "loading" : ""}
+                     className={this.props.isLoading ? "loading" : ""}
                      placeholder="enter address"
                      value={this.state.value}
-                     onChange={ event => this.handleChange(event) }
+                     onChange={
+                         event => {
+                             let value = event.target.value;
+                             this.setState({value});
+                             this.props.onInputChange(value);
+                         }
+                     }
                      />
               <ResultsList results={this.state.results}
-                           emptySearch={isBlank(this.state.value)}/>
+                           hideResults={isBlank(this.state.value) || this.props.isLoading}/>
             </div>
         );
     }   
 }
+
+const ReduxGeoInput = connect(
+    state => {
+        return {
+            results: state.geoData.results,
+            error: state.geoData.error,
+            isLoading: state.geoData.isLoading
+        };
+    },
+
+    dispatch => {
+        return {
+            onInputChange: value => {
+                dispatch(fetchGeodata(value.trim()));
+            }
+        };
+    }
+)(GeoInput);
               
 render(
-    <GeoInput/>,
+    <Provider store={appStore}>
+      <ReduxGeoInput/>
+    </Provider>,
     document.getElementById('content')
 );
