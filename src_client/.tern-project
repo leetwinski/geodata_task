@@ -3,6 +3,7 @@
         "node"
     ],
     "plugins": {
+        "node": { },
         "es_modules": { }
     }
 }
