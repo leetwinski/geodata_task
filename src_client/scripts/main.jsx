@@ -90,8 +90,8 @@ function isBlank(s) {
     return s.trim().length === 0; 
 }
 
-let ResultsList = React.createClass({
-    render: function() {
+class ResultsList extends React.Component {
+    render() {
         console.log(this.props.emptySearch);
         
         if (this.props.emptySearch) {
@@ -113,28 +113,33 @@ let ResultsList = React.createClass({
                 <div className="cell">Longitude</div>
               </div>
               {
-              results.map(function(item) {
-                  return <div className="row">
-                      <div className="cell">{item.address}</div>
-                          <div className="cell">{item.lat}</div>
-                              <div className="cell">{item.lng}</div>
-                      </div>;})
+                  results.map(
+                      (item) => {
+                          return <div className="row">
+                              <div className="cell">{item.address}</div>
+                                  <div className="cell">{item.lat}</div>
+                                      <div className="cell">{item.lng}</div>
+                              </div>;}
+                  )
               }
             </div>
-        )}
-});
-              
-let GeoInput = React.createClass({
-    getInitialState: function() { 
-        return { value: '',
-                 lastStatus: '',
-                 results: [],
-                 loading: false }; 
-    },
-    handleChange: function(event) {
+        )
+    }
+}
+
+class GeoInput extends React.Component {
+    constructor() {
+        super();
+        this.state = { value: '',
+                       lastStatus: '',
+                       results: [],
+                       loading: false };
+    }
+ 
+    handleChange(event) {
         console.log(event.target.value);
         this.setState({value: event.target.value,
-                       loading: true});
+                  loading: true});
         retrieveGeo(event.target.value, INPUT_DELAY_MILLIS).then(
             result =>  {
                 if (!result) {
@@ -157,23 +162,24 @@ let GeoInput = React.createClass({
                            results: [],
                            loading: false});
         });
-    },
-    render: function() {
+    }
+
+    render() {
         return (
             <div className="wrapper">
               <input type="text"
-                     className={this.state.loading ? "loading" : ""}
+                     className={state.loading ? "loading" : ""}
                      placeholder="enter address"
                      value={this.state.value}
-                     onChange={this.handleChange}
+                     onChange={ event => this.handleChange(event) }
                      />
               <ResultsList results={this.state.results}
                            emptySearch={isBlank(this.state.value)}/>
             </div>
         );
-    }
-});
-
+    }   
+}
+              
 render(
     <GeoInput/>,
     document.getElementById('content')

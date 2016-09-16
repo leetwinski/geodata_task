@@ -10,8 +10,6 @@ var sourcemaps = require('gulp-sourcemaps');
 function compile(watch) {
     let bundler = watchify(browserify('./scripts/main.jsx', {debug: true}).transform(babel));
 
-    
-
     function rebundle() {
         bundler.bundle()
             .on('error', function(err) { console.error(err); this.emit('end');})
