@@ -1,6 +1,7 @@
 import React from 'react';
 import {render}  from 'react-dom';
 
+
 const INPUT_DELAY_MILLIS = 300;
 const RETRY_DELAY_MILLIS = 1000;
 
@@ -115,15 +116,18 @@ class ResultsList extends React.Component {
               {
                   results.map(
                       (item) => {
-                          return <div className="row">
-                              <div className="cell">{item.address}</div>
-                                  <div className="cell">{item.lat}</div>
-                                      <div className="cell">{item.lng}</div>
-                              </div>;}
+                          return (
+                              <div className="row">
+                                <div className="cell">{item.address}</div>
+                                <div className="cell">{item.lat}</div>
+                                <div className="cell">{item.lng}</div>
+                              </div>
+                          );
+                      }
                   )
               }
             </div>
-        )
+        );
     }
 }
 
