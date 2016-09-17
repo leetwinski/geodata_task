@@ -70,12 +70,16 @@ class RequestService {
 let requestService = new RequestService(
     address => `/geocode?address=${encodeURIComponent(address)}`);
 
-function ui_requestGeodata(address) {
-    return {
-        type: UI_REQUEST_GEODATA,
-        address
-    };
-}
+let ui_requestGeodata = (() => {
+    let timeoutId;
+
+    return address => 
+        dispatch => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => dispatch(fetchGeodata(address)), 
+                                   INPUT_DELAY_MILLIS);
+        };
+})();
 
 function requestStarted(address) {
     return {
@@ -220,7 +224,7 @@ const ReduxGeoInput = connect(
     dispatch => {
         return {
             onInputChange: value => {
-                dispatch(fetchGeodata(value.trim()));
+                dispatch(ui_requestGeodata(value.trim()));
             }
         };
     }
