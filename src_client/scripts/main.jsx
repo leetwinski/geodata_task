@@ -9,7 +9,6 @@ import thunkMiddleware from 'redux-thunk';
 import createLogger from 'redux-logger';
 
 const INPUT_DELAY_MILLIS = 300;
-const RETRY_DELAY_MILLIS = 1000;
 
 const MAX_RETRIES = 5;
 
@@ -38,8 +37,6 @@ class RequestService {
 
     request(dispatch, address) {        
         this.cancel();
-        
-        dispatch(requestStarted(address));
 
         if (isBlank(address)) {
             dispatch(requestComplete([]));
@@ -60,7 +57,17 @@ class RequestService {
                         }
                     )
             )
-        ).retry(MAX_RETRIES).subscribe(
+        ).retryWhen(
+            errors => Rx.Observable.range(1, MAX_RETRIES)
+                .zip(errors, (i, err) => [i, err])
+                .flatMap(([i, err]) => {
+                    if (i >= MAX_RETRIES) {
+                        throw err;
+                    }
+
+                    return Rx.Observable.timer(i * 1000);
+                })
+        ).subscribe(
             results => dispatch(requestComplete(results)),
             err => dispatch(requestError(err))
         );
@@ -75,6 +82,8 @@ let ui_requestGeodata = (() => {
 
     return address => 
         dispatch => {
+            dispatch(requestStarted(address));
+            
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => dispatch(fetchGeodata(address)), 
                                    INPUT_DELAY_MILLIS);
