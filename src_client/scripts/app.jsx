@@ -5,6 +5,7 @@ import 'babel-polyfill';
 import {combineReducers, createStore, applyMiddleware} from 'redux';
 import 'isomorphic-fetch';
 import Rx from 'rxjs/Rx';
+
 import createLogger from 'redux-logger';
 import {rxReduxMiddleware, observeActionType} from "./rx-redux-middleware";
 

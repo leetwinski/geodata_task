@@ -8,7 +8,7 @@ var buffer = require('vinyl-buffer');
 var sourcemaps = require('gulp-sourcemaps');
 
 function compile(watch) {
-    let bundler = watchify(browserify('./scripts/main.jsx', {debug: true}).transform(babel));
+    let bundler = watchify(browserify('./scripts/app.jsx', {debug: true}).transform(babel));
 
     function rebundle() {
         bundler.bundle()
