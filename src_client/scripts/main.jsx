@@ -5,90 +5,24 @@ import 'babel-polyfill';
 import {combineReducers, createStore, applyMiddleware} from 'redux';
 import 'isomorphic-fetch';
 import Rx from 'rxjs/Rx';
-import thunkMiddleware from 'redux-thunk';
 import createLogger from 'redux-logger';
+import {rxReduxMiddleware, observeActionType} from "./rx-redux-middleware";
 
 const INPUT_DELAY_MILLIS = 300;
 
 const MAX_RETRIES = 5;
 
-const UI_REQUEST_GEODATA = 'REQUEST_GEODATA';
+const UI_REQUEST_GEODATA = 'UI_REQUEST_GEODATA';
 const REQUEST_STARTED = 'REQUEST_STARTED';
 const REQUEST_COMPLETE = 'REQUEST_COMPLETE';
 const REQUEST_ERROR = 'REQUEST_ERROR';
 
-class RequestService {
-    constructor(urlFn) { 
-        if (urlFn === undefined) {
-            this.urlFn = params => url;
-        } else {
-            this.urlFn = urlFn;
-        }
-
-        this.subscription = null;
-    }
-
-    cancel() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
-        }
-    }
-
-    request(dispatch, address) {        
-        this.cancel();
-
-        if (isBlank(address)) {
-            dispatch(requestComplete([]));
-            return;
-        }
-
-        this.subscription = Rx.Observable.defer(
-            () => Rx.Observable.fromPromise(
-                fetch(this.urlFn(address))
-                    .then(resp => resp.json())
-                    .then(
-                        ({results, error}) => {
-                            if (error) {
-                                return Promise.reject(error);
-                            }
-
-                            return results || [];
-                        }
-                    )
-            )
-        ).retryWhen(
-            errors => Rx.Observable.range(1, MAX_RETRIES)
-                .zip(errors, (i, err) => [i, err])
-                .flatMap(([i, err]) => {
-                    if (i >= MAX_RETRIES) {
-                        throw err;
-                    }
-
-                    return Rx.Observable.timer(i * 1000);
-                })
-        ).subscribe(
-            results => dispatch(requestComplete(results)),
-            err => dispatch(requestError(err))
-        );
-    }
-}                       
-
-let requestService = new RequestService(
-    address => `/geocode?address=${encodeURIComponent(address)}`);
-
-let ui_requestGeodata = (() => {
-    let timeoutId;
-
-    return address => 
-        dispatch => {
-            dispatch(requestStarted(address));
-            
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => dispatch(fetchGeodata(address)), 
-                                   INPUT_DELAY_MILLIS);
-        };
-})();
+function ui_requestGeodata(address) {
+    return {
+        type: UI_REQUEST_GEODATA,
+        address: address
+    };
+}
 
 function requestStarted(address) {
     return {
@@ -134,25 +68,69 @@ function requestDataReducer(reqData, action) {
     return reqData;
 }
 
-function fetchGeodata(address) {
-    return dispatch => {
-        requestService.request(dispatch, address);
-    };
-}
-
 const geodataApp = combineReducers({
     geoData: requestDataReducer
 });
 
 const appStore = createStore(geodataApp, applyMiddleware(
-    thunkMiddleware, createLogger()));
+    createLogger(), rxReduxMiddleware));
+
+function requestWithRetry(url, maxRetries) {
+    return  Rx.Observable.defer(
+        () => Rx.Observable.fromPromise(
+            fetch(url)
+                .then(resp => resp.json())
+                .then(
+                    ({results, error}) => {
+                        if (error) {
+                            return Promise.reject(error);
+                        }
+
+                        return {results: results || []};
+                    }
+                )
+        )
+    ).retryWhen(
+        errors => errors.flatMap((err, i) => {
+            if (i + 1 >= maxRetries) {
+                throw err;
+            }
+
+            return Rx.Observable.timer((i + 1) * 1000);
+        })
+    ).catch(error => Rx.Observable.of({error}));
+}
+
+observeActionType(UI_REQUEST_GEODATA)
+    .pluck('address')
+    .do(address => appStore.dispatch(requestStarted(address)))
+    .debounceTime(INPUT_DELAY_MILLIS)
+    .switchMap(address => {
+        if (isBlank(address)) {
+            return Rx.Observable.of({results: []});
+        }
+        
+        return requestWithRetry(
+            `/geocode?address=${encodeURIComponent(address)}`,
+            MAX_RETRIES);
+    })
+    .subscribe(
+        ({results, error}) => {
+            if (error === undefined) {
+                appStore.dispatch(requestComplete(results));
+            } else {
+                appStore.dispatch(requestError(error));
+            }
+        },
+        error => appStore.dispatch(requestError(error))
+    );
 
 function isBlank(s) {
     if (!s) {
         return true;
     }
 
-    return s.trim().length === 0; 
+    return s.trim().length === 0;
 }
 
 class ResultsList extends React.Component {
@@ -160,7 +138,7 @@ class ResultsList extends React.Component {
         if (this.props.hideResults) {
             return null;
         }
-        
+      
         let results = this.props.results || [];
         if (results.length === 0) {
             return <div className="empty-result">
@@ -218,7 +196,7 @@ class GeoInput extends React.Component {
                            hideResults={isBlank(this.state.value) || this.props.isLoading}/>
             </div>
         );
-    }   
+    } 
 }
 
 const ReduxGeoInput = connect(
@@ -238,7 +216,7 @@ const ReduxGeoInput = connect(
         };
     }
 )(GeoInput);
-              
+            
 render(
     <Provider store={appStore}>
       <ReduxGeoInput/>
